@@ -6,59 +6,70 @@ describe("scene", function()
 		config.setup({})
 	end)
 
-	describe("get_lines", function()
-		it("returns 15 lines", function()
-			local lines = scene.get_lines()
-			assert.are.equal(15, #lines)
+	describe("get_grid", function()
+		it("returns a grid with correct height", function()
+			local grid = scene.get_grid()
+			assert.are.equal(scene.HEIGHT, #grid)
 		end)
 
-		it("returns strings for each line", function()
-			local lines = scene.get_lines()
-			for i, line in ipairs(lines) do
-				assert.is_string(line, "line " .. i .. " should be a string")
+		it("returns a grid with correct width", function()
+			local grid = scene.get_grid()
+			for y = 1, #grid do
+				assert.are.equal(scene.WIDTH, #grid[y], "row " .. y .. " should have correct width")
 			end
+		end)
+
+		it("fills every cell with a palette key", function()
+			local grid = scene.get_grid()
+			for y = 1, #grid do
+				for x = 1, #grid[y] do
+					assert.is_string(grid[y][x], "cell at " .. x .. "," .. y .. " should be a string")
+					assert.are.equal(1, #grid[y][x], "palette key should be 1 char at " .. x .. "," .. y)
+				end
+			end
+		end)
+
+		it("has ceiling in top rows", function()
+			local grid = scene.get_grid()
+			assert.are.equal("0", grid[1][1])
+			assert.are.equal("0", grid[2][20])
+		end)
+
+		it("has wall below ceiling", function()
+			local grid = scene.get_grid()
+			assert.are.equal("1", grid[3][1])
+		end)
+
+		it("has baseboard at row 13", function()
+			local grid = scene.get_grid()
+			assert.are.equal("9", grid[13][1])
+		end)
+
+		it("has floor pattern below baseboard", function()
+			local grid = scene.get_grid()
+			local cell = grid[14][1]
+			assert.is_true(cell == "7" or cell == "8")
 		end)
 
 		it("returns a fresh copy each call", function()
-			local a = scene.get_lines()
-			local b = scene.get_lines()
+			local a = scene.get_grid()
+			local b = scene.get_grid()
 			assert.are_not.equal(a, b)
-			assert.are.same(a, b)
+			-- Modify a, b should be unaffected
+			a[1][1] = "Z"
+			assert.are_not.equal("Z", b[1][1])
 		end)
 
-		it("first line starts with top-left corner", function()
-			local lines = scene.get_lines()
-			assert.is_truthy(lines[1]:find("^┌"))
+		it("paints monitor screen pixels", function()
+			local grid = scene.get_grid()
+			-- Desk 1 starts at x=1, monitor screen at x+2, y+1 = (3, 15)
+			assert.are.equal("D", grid[15][3])
 		end)
 
-		it("last line starts with bottom-left corner", function()
-			local lines = scene.get_lines()
-			assert.is_truthy(lines[15]:find("^└"))
-		end)
-	end)
-
-	describe("get_highlights", function()
-		it("returns a non-empty list", function()
-			local hls = scene.get_highlights()
-			assert.is_true(#hls > 0)
-		end)
-
-		it("each highlight has required fields", function()
-			local hls = scene.get_highlights()
-			for _, hl in ipairs(hls) do
-				assert.is_number(hl.row)
-				assert.is_number(hl.col_start)
-				assert.is_number(hl.col_end)
-				assert.is_string(hl.hl_group)
-				assert.is_true(hl.col_end > hl.col_start, "col_end must be > col_start")
-			end
-		end)
-
-		it("row indices are 0-based and within bounds", function()
-			local hls = scene.get_highlights()
-			for _, hl in ipairs(hls) do
-				assert.is_true(hl.row >= 0 and hl.row < 15)
-			end
+		it("paints window glass pixels", function()
+			local grid = scene.get_grid()
+			-- Window 1 at (5,4), glass pane at (6, 5)
+			assert.are.equal("5", grid[5][6])
 		end)
 	end)
 
@@ -67,17 +78,12 @@ describe("scene", function()
 			assert.are.equal(4, #scene.desk_seats)
 		end)
 
-		it("each seat has x and y", function()
+		it("each seat has x and y within scene bounds", function()
 			for _, seat in ipairs(scene.desk_seats) do
 				assert.is_number(seat.x)
 				assert.is_number(seat.y)
-			end
-		end)
-
-		it("seats are within scene bounds", function()
-			for _, seat in ipairs(scene.desk_seats) do
-				assert.is_true(seat.x >= 1 and seat.x <= 40)
-				assert.is_true(seat.y >= 1 and seat.y <= 15)
+				assert.is_true(seat.x >= 1 and seat.x <= scene.WIDTH)
+				assert.is_true(seat.y >= 1 and seat.y <= scene.HEIGHT)
 			end
 		end)
 	end)
@@ -92,9 +98,9 @@ describe("scene", function()
 		it("is inside the scene bounds", function()
 			local w = scene.walkable
 			assert.is_true(w.x_min >= 1)
-			assert.is_true(w.x_max <= 40)
+			assert.is_true(w.x_max <= scene.WIDTH)
 			assert.is_true(w.y_min >= 1)
-			assert.is_true(w.y_max <= 15)
+			assert.is_true(w.y_max <= scene.HEIGHT)
 		end)
 	end)
 end)

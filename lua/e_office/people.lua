@@ -2,6 +2,7 @@ local M = {}
 
 local sprites = require("e_office.sprites")
 local scene = require("e_office.scene")
+local palette = require("e_office.palette")
 
 local STATES = {
 	SITTING_TYPING = "SITTING_TYPING",
@@ -18,11 +19,12 @@ end
 
 local function random_walkable_pos()
 	local w = scene.walkable
-	return rand_range(w.x_min, w.x_max - sprites.width), rand_range(w.y_min, w.y_max - 2)
+	return rand_range(w.x_min, w.x_max - sprites.width), rand_range(w.y_min, w.y_max)
 end
 
 function M.create(id, desk_id)
 	local seat = scene.desk_seats[desk_id]
+	local num_variants = #palette.person_variants
 	return {
 		id = id,
 		x = seat.x,
@@ -30,6 +32,7 @@ function M.create(id, desk_id)
 		state = STATES.SITTING_TYPING,
 		frame = 0,
 		desk_id = desk_id,
+		color_variant = ((id - 1) % num_variants) + 1,
 		target_x = nil,
 		target_y = nil,
 		ticks_in_state = 0,

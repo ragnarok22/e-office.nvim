@@ -2,26 +2,19 @@ local M = {}
 
 M.ns = vim.api.nvim_create_namespace("e_office")
 
-local groups = {
-	EOfficeWall = { fg = "#8B8682" },
-	EOfficeFloor = { fg = "#D2B48C" },
-	EOfficeCarpet = { fg = "#8B4513" },
-	EOfficeDesk = { fg = "#A0522D" },
-	EOfficeScreen = { fg = "#00FF00", bold = true },
-	EOfficeMonitor = { fg = "#333333" },
-	EOfficeChair = { fg = "#4A4A4A" },
-	EOfficePerson = { fg = "#FFD700" },
-	EOfficePersonHead = { fg = "#FFDAB9" },
-	EOfficePlant = { fg = "#228B22" },
-	EOfficeTitle = { fg = "#4169E1", bold = true },
-	EOfficeDecor = { fg = "#CD853F" },
-}
+local hl_cache = {}
+local hl_counter = 0
 
-function M.define()
-	for name, opts in pairs(groups) do
-		opts.default = true
-		vim.api.nvim_set_hl(0, name, opts)
+-- Get or create a highlight group for a (fg, bg) color pair
+function M.get_hl(fg, bg)
+	local key = fg .. "|" .. bg
+	if not hl_cache[key] then
+		hl_counter = hl_counter + 1
+		local name = "EO" .. hl_counter
+		vim.api.nvim_set_hl(0, name, { fg = fg, bg = bg })
+		hl_cache[key] = name
 	end
+	return hl_cache[key]
 end
 
 function M.apply(buf, highlight_instructions)
@@ -29,6 +22,11 @@ function M.apply(buf, highlight_instructions)
 	for _, hl in ipairs(highlight_instructions) do
 		vim.api.nvim_buf_add_highlight(buf, M.ns, hl.hl_group, hl.row, hl.col_start, hl.col_end)
 	end
+end
+
+function M.clear_cache()
+	hl_cache = {}
+	hl_counter = 0
 end
 
 return M

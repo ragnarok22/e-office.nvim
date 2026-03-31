@@ -6,12 +6,11 @@ local animation = require("e_office.animation")
 
 function M.setup(user_config)
 	config.setup(user_config)
-	highlights.define()
 
 	vim.api.nvim_create_autocmd("ColorScheme", {
 		group = vim.api.nvim_create_augroup("EOfficeHighlights", { clear = true }),
 		callback = function()
-			highlights.define()
+			highlights.clear_cache()
 		end,
 	})
 
@@ -61,7 +60,7 @@ local function show_help()
 		"",
 		"Configuration (defaults):",
 		"  {",
-		"    window = { width = 40, height = 15, border = 'rounded' },",
+		"    window = { width = 40, height = 18, border = 'rounded' },",
 		"    animation = { fps = 4, typing_speed = 2 },",
 		"    office = { num_people = 3, workstations = 4 },",
 		"    auto_start = false,",

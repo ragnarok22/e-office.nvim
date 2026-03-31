@@ -2,86 +2,74 @@ local M = {}
 
 local scene = require("e_office.scene")
 local people_mod = require("e_office.people")
+local palette = require("e_office.palette")
+local highlights = require("e_office.highlights")
 
--- Convert scene lines to a mutable grid of single-byte chars
--- For multi-byte UTF-8 chars, we work at the string level instead
--- Strategy: render by overlaying sprite characters onto line strings
+local HALFBLOCK = "\xe2\x96\x80" -- ▀ (UTF-8: E2 96 80)
+local HALFBLOCK_BYTES = 3
 
 function M.render(people_list)
-	-- Start with the static scene lines
-	local lines = scene.get_lines()
-	local highlights = scene.get_highlights()
+	-- Build scene grid (palette keys)
+	local grid = scene.get_grid()
+	local height = scene.HEIGHT
+	local width = scene.WIDTH
 
-	-- For each person, overlay their sprite onto the lines
+	-- Resolve scene palette to hex colors
+	local color_grid = {}
+	for y = 1, height do
+		color_grid[y] = {}
+		for x = 1, width do
+			color_grid[y][x] = palette.scene[grid[y][x]] or "#000000"
+		end
+	end
+
+	-- Overlay person sprites
 	for _, person in ipairs(people_list) do
 		local sprite = people_mod.get_sprite(person)
 		if sprite then
-			for row_offset, sprite_row in ipairs(sprite) do
-				local line_idx = person.y + row_offset - 1
-				if line_idx >= 1 and line_idx <= #lines then
-					local line = lines[line_idx]
-					-- Convert line to a table of UTF-8 characters for safe indexing
-					local chars = M._utf8_chars(line)
-					for col_offset, cell in ipairs(sprite_row) do
-						local char = cell[1]
-						local hl = cell[2]
-						if char and char ~= " " then
-							local col_idx = person.x + col_offset - 1
-							if col_idx >= 1 and col_idx <= #chars then
-								chars[col_idx] = char
-								if hl then
-									-- Calculate byte offset for highlight
-									local byte_start = M._char_byte_offset(chars, col_idx)
-									local byte_end = byte_start + #char
-									table.insert(highlights, {
-										row = line_idx - 1,
-										col_start = byte_start,
-										col_end = byte_end,
-										hl_group = hl,
-									})
-								end
+			local variant = palette.person_variants[person.color_variant]
+			for row_idx, row_str in ipairs(sprite) do
+				local gy = person.y + row_idx - 1
+				if gy >= 1 and gy <= height then
+					for col_idx = 1, #row_str do
+						local key = row_str:sub(col_idx, col_idx)
+						if key ~= "." then
+							local gx = person.x + col_idx - 1
+							if gx >= 1 and gx <= width and variant[key] then
+								color_grid[gy][gx] = variant[key]
 							end
 						end
 					end
-					lines[line_idx] = table.concat(chars)
 				end
 			end
 		end
 	end
 
-	return lines, highlights
-end
+	-- Render to half-block lines
+	local lines = {}
+	local hl_instructions = {}
+	local line_idx = 0
 
--- Split a UTF-8 string into a table of individual characters
-function M._utf8_chars(str)
-	local chars = {}
-	local i = 1
-	local len = #str
-	while i <= len do
-		local byte = string.byte(str, i)
-		local char_len
-		if byte < 0x80 then
-			char_len = 1
-		elseif byte < 0xE0 then
-			char_len = 2
-		elseif byte < 0xF0 then
-			char_len = 3
-		else
-			char_len = 4
+	for y = 1, height, 2 do
+		local chars = {}
+		for x = 1, width do
+			local top = color_grid[y][x]
+			local bot = (y + 1 <= height) and color_grid[y + 1][x] or top
+			chars[x] = HALFBLOCK
+
+			local hl_group = highlights.get_hl(top, bot)
+			table.insert(hl_instructions, {
+				row = line_idx,
+				col_start = (x - 1) * HALFBLOCK_BYTES,
+				col_end = x * HALFBLOCK_BYTES,
+				hl_group = hl_group,
+			})
 		end
-		table.insert(chars, str:sub(i, i + char_len - 1))
-		i = i + char_len
+		table.insert(lines, table.concat(chars))
+		line_idx = line_idx + 1
 	end
-	return chars
-end
 
--- Get the byte offset of the nth UTF-8 character (0-indexed bytes)
-function M._char_byte_offset(chars, n)
-	local offset = 0
-	for i = 1, n - 1 do
-		offset = offset + #chars[i]
-	end
-	return offset
+	return lines, hl_instructions
 end
 
 return M

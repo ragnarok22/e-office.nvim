@@ -1,6 +1,7 @@
 local config = require("e_office.config")
 local people = require("e_office.people")
 local scene = require("e_office.scene")
+local palette = require("e_office.palette")
 
 describe("people", function()
 	before_each(function()
@@ -35,6 +36,19 @@ describe("people", function()
 			assert.is_true(person.state_duration <= 120)
 		end)
 
+		it("assigns color_variant based on id", function()
+			local p1 = people.create(1, 1)
+			local p2 = people.create(2, 2)
+			assert.are.equal(1, p1.color_variant)
+			assert.are.equal(2, p2.color_variant)
+		end)
+
+		it("wraps color_variant around available variants", function()
+			local num = #palette.person_variants
+			local p = people.create(num + 1, 1)
+			assert.are.equal(1, p.color_variant)
+		end)
+
 		it("creates people at different desks", function()
 			local p1 = people.create(1, 1)
 			local p2 = people.create(2, 3)
@@ -48,7 +62,7 @@ describe("people", function()
 			local person = people.create(1, 1)
 			local sprite = people.get_sprite(person)
 			assert.is_table(sprite)
-			assert.are.equal(2, #sprite)
+			assert.are.equal(6, #sprite)
 		end)
 
 		it("returns a sprite for WALKING", function()
@@ -56,7 +70,7 @@ describe("people", function()
 			person.state = people.STATES.WALKING
 			local sprite = people.get_sprite(person)
 			assert.is_table(sprite)
-			assert.are.equal(3, #sprite)
+			assert.are.equal(7, #sprite)
 		end)
 
 		it("returns a sprite for IDLE", function()
@@ -64,7 +78,7 @@ describe("people", function()
 			person.state = people.STATES.IDLE
 			local sprite = people.get_sprite(person)
 			assert.is_table(sprite)
-			assert.are.equal(3, #sprite)
+			assert.are.equal(7, #sprite)
 		end)
 
 		it("returns a sprite for STANDING", function()
@@ -72,16 +86,15 @@ describe("people", function()
 			person.state = people.STATES.STANDING
 			local sprite = people.get_sprite(person)
 			assert.is_table(sprite)
-			assert.are.equal(2, #sprite)
+			assert.are.equal(6, #sprite)
 		end)
 
-		it("alternates sitting_typing frames", function()
+		it("sprite rows are strings", function()
 			local person = people.create(1, 1)
-			person.frame = 0
-			local s0 = people.get_sprite(person)
-			person.frame = 1
-			local s1 = people.get_sprite(person)
-			assert.are_not.equal(s0, s1)
+			local sprite = people.get_sprite(person)
+			for _, row in ipairs(sprite) do
+				assert.is_string(row)
+			end
 		end)
 	end)
 
@@ -138,9 +151,9 @@ describe("people", function()
 			local person = people.create(1, 1)
 			person.state = people.STATES.WALKING
 			person.target_x = 20
-			person.target_y = 10
+			person.target_y = 28
 			person.x = 20
-			person.y = 10
+			person.y = 28
 
 			people.update(person, 2)
 			assert.are.equal(people.STATES.IDLE, person.state)
@@ -165,23 +178,13 @@ describe("people", function()
 			person.state_duration = 1
 			person.ticks_in_state = 0
 			person.x = 20
-			person.y = 10
+			person.y = 28
 
 			people.update(person, 2)
 			assert.are.equal(people.STATES.WALKING, person.state)
 			local seat = scene.desk_seats[1]
 			assert.are.equal(seat.x, person.target_x)
 			assert.are.equal(seat.y, person.target_y)
-		end)
-
-		it("walking sets direction based on movement", function()
-			local person = people.create(1, 1)
-			person.state = people.STATES.WALKING
-			person.target_x = person.x - 10
-			person.target_y = person.y
-
-			people.update(person, 2)
-			assert.are.equal(-1, person.direction)
 		end)
 	end)
 

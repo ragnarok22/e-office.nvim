@@ -1,181 +1,143 @@
 local M = {}
 
--- Each cell: { char, hl_group }
--- The scene is 40 chars wide x 15 rows tall
+local SCENE_WIDTH = 40
+local SCENE_HEIGHT = 36
 
-local W = "EOfficeWall"
-local F = "EOfficeFloor"
-local C = "EOfficeCarpet"
-local D = "EOfficeDesk"
-local S = "EOfficeScreen"
-local MO = "EOfficeMonitor"
-local CH = "EOfficeChair"
-local P = "EOfficePlant"
-local T = "EOfficeTitle"
-local DC = "EOfficeDecor"
-
--- Raw scene lines with per-character highlight info
--- Format: string line + highlight ranges for that line
-local scene_template = {
-	{
-		str = "┌──────────────────────────────────────┐",
-		hl = { { 0, 40, W } },
-	},
-	{
-		str = "│ ♣       E - O F F I C E          ♣  │",
-		hl = {
-			{ 0, 1, W },
-			{ 2, 3, P },
-			{ 9, 30, T },
-			{ 35, 36, P },
-			{ 39, 40, W },
-		},
-	},
-	{
-		str = "│──────────────────────────────────────│",
-		hl = { { 0, 40, W } },
-	},
-	-- Row 3: monitor tops (4 workstations)
-	{
-		str = "│  ┌───┐  ┌───┐  ┌───┐  ┌───┐        │",
-		hl = {
-			{ 0, 1, W },
-			{ 3, 8, MO },
-			{ 11, 16, MO },
-			{ 19, 24, MO },
-			{ 27, 32, MO },
-			{ 39, 40, W },
-		},
-	},
-	-- Row 4: monitor screens
-	{
-		str = "│  │▓▓▓│  │▓▓▓│  │▓▓▓│  │▓▓▓│        │",
-		hl = {
-			{ 0, 1, W },
-			{ 3, 4, MO },
-			{ 4, 7, S },
-			{ 7, 8, MO },
-			{ 11, 12, MO },
-			{ 12, 15, S },
-			{ 15, 16, MO },
-			{ 19, 20, MO },
-			{ 20, 23, S },
-			{ 23, 24, MO },
-			{ 27, 28, MO },
-			{ 28, 31, S },
-			{ 31, 32, MO },
-			{ 39, 40, W },
-		},
-	},
-	-- Row 5: monitor bases
-	{
-		str = "│  └─┬─┘  └─┬─┘  └─┬─┘  └─┬─┘        │",
-		hl = {
-			{ 0, 1, W },
-			{ 3, 8, MO },
-			{ 11, 16, MO },
-			{ 19, 24, MO },
-			{ 27, 32, MO },
-			{ 39, 40, W },
-		},
-	},
-	-- Row 6: desks
-	{
-		str = "│ ████████ ████████ ████████ ████████  │",
-		hl = {
-			{ 0, 1, W },
-			{ 2, 10, D },
-			{ 11, 19, D },
-			{ 20, 28, D },
-			{ 29, 37, D },
-			{ 39, 40, W },
-		},
-	},
-	-- Row 7: chairs (people sit here)
-	{
-		str = "│   ╚╝      ╚╝      ╚╝      ╚╝       │",
-		hl = {
-			{ 0, 1, W },
-			{ 4, 6, CH },
-			{ 13, 15, CH },
-			{ 22, 24, CH },
-			{ 31, 33, CH },
-			{ 39, 40, W },
-		},
-	},
-	-- Row 8: walkway
-	{ str = "│                                      │", hl = { { 0, 1, W }, { 1, 39, F }, { 39, 40, W } } },
-	-- Row 9: carpet
-	{
-		str = "│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │",
-		hl = {
-			{ 0, 1, W },
-			{ 3, 37, C },
-			{ 39, 40, W },
-		},
-	},
-	-- Row 10-11: walkway
-	{ str = "│                                      │", hl = { { 0, 1, W }, { 1, 39, F }, { 39, 40, W } } },
-	{ str = "│                                      │", hl = { { 0, 1, W }, { 1, 39, F }, { 39, 40, W } } },
-	-- Row 12: decorations
-	{
-		str = "│  ♨                             ♣     │",
-		hl = {
-			{ 0, 1, W },
-			{ 3, 4, DC },
-			{ 34, 35, P },
-			{ 39, 40, W },
-		},
-	},
-	-- Row 13: walkway
-	{ str = "│                                      │", hl = { { 0, 1, W }, { 1, 39, F }, { 39, 40, W } } },
-	-- Row 14: bottom wall
-	{
-		str = "└──────────────────────────────────────┘",
-		hl = { { 0, 40, W } },
-	},
-}
-
-M.desk_seats = {
-	{ x = 4, y = 6 }, -- above desk row, where the person sprite top goes
-	{ x = 13, y = 6 },
-	{ x = 22, y = 6 },
-	{ x = 31, y = 6 },
-}
-
-M.walkable = {
-	x_min = 2,
-	x_max = 37,
-	y_min = 8,
-	y_max = 13,
-}
-
-function M.get_lines()
-	local lines = {}
-	for i, row in ipairs(scene_template) do
-		lines[i] = row.str
-	end
-	return lines
-end
-
-function M.get_highlights()
-	local hls = {}
-	for row_idx, row in ipairs(scene_template) do
-		for _, hl in ipairs(row.hl) do
-			table.insert(hls, {
-				row = row_idx - 1,
-				col_start = hl[1],
-				col_end = hl[2],
-				hl_group = hl[3],
-			})
+-- Helper to paint a filled rectangle on the grid
+local function paint_rect(grid, x, y, w, h, color)
+	for dy = 0, h - 1 do
+		for dx = 0, w - 1 do
+			local gy = y + dy
+			local gx = x + dx
+			if gy >= 1 and gy <= SCENE_HEIGHT and gx >= 1 and gx <= SCENE_WIDTH then
+				grid[gy][gx] = color
+			end
 		end
 	end
-	return hls
 end
 
-function M.get_workstation_count()
-	local config = require("e_office.config")
-	return config.user_config.office and config.user_config.office.workstations or 4
+local function paint_pixel(grid, x, y, color)
+	if y >= 1 and y <= SCENE_HEIGHT and x >= 1 and x <= SCENE_WIDTH then
+		grid[y][x] = color
+	end
 end
+
+local function paint_window(grid, x, y)
+	-- 9 wide x 7 tall, 4-pane window with cross bar
+	paint_rect(grid, x, y, 9, 7, "4") -- frame
+	-- Top-left pane
+	paint_rect(grid, x + 1, y + 1, 3, 2, "5")
+	-- Top-right pane
+	paint_rect(grid, x + 5, y + 1, 3, 2, "5")
+	-- Bottom-left pane
+	paint_rect(grid, x + 1, y + 4, 3, 2, "5")
+	-- Bottom-right pane
+	paint_rect(grid, x + 5, y + 4, 3, 2, "5")
+end
+
+local function paint_desk(grid, x, y)
+	-- 8 wide, monitor + desk + legs
+	-- Monitor frame (6 wide x 4 tall, centered)
+	paint_rect(grid, x + 1, y, 6, 1, "C") -- top frame
+	paint_rect(grid, x + 1, y + 3, 6, 1, "C") -- bottom frame
+	paint_pixel(grid, x + 1, y + 1, "C") -- left frame
+	paint_pixel(grid, x + 1, y + 2, "C")
+	paint_pixel(grid, x + 6, y + 1, "C") -- right frame
+	paint_pixel(grid, x + 6, y + 2, "C")
+	-- Screen (4 wide x 2 tall)
+	paint_rect(grid, x + 2, y + 1, 4, 2, "D")
+	-- Stand
+	paint_rect(grid, x + 3, y + 4, 2, 1, "C")
+	-- Desk surface
+	paint_rect(grid, x, y + 5, 8, 1, "A")
+	-- Keyboard on desk
+	paint_rect(grid, x + 2, y + 5, 4, 1, "I")
+	-- Desk legs
+	paint_rect(grid, x, y + 6, 1, 2, "B")
+	paint_rect(grid, x + 7, y + 6, 1, 2, "B")
+end
+
+local function paint_chair(grid, x, y)
+	-- 4 wide x 2 tall, centered on 8-wide desk area
+	paint_rect(grid, x + 2, y, 4, 1, "E")
+	paint_pixel(grid, x + 2, y + 1, "E")
+	paint_pixel(grid, x + 5, y + 1, "E")
+end
+
+local function paint_plant(grid, x, y)
+	-- 4 wide x 5 tall
+	paint_pixel(grid, x + 1, y, "F")
+	paint_pixel(grid, x + 2, y, "F")
+	paint_pixel(grid, x, y + 1, "G")
+	paint_pixel(grid, x + 1, y + 1, "F")
+	paint_pixel(grid, x + 2, y + 1, "F")
+	paint_pixel(grid, x + 3, y + 1, "G")
+	paint_pixel(grid, x + 1, y + 2, "G")
+	paint_pixel(grid, x + 2, y + 2, "G")
+	-- Pot
+	paint_rect(grid, x, y + 3, 4, 2, "H")
+end
+
+function M.get_grid()
+	local config = require("e_office.config")
+	local workstations = 4
+	if config.user_config.office then
+		workstations = config.user_config.office.workstations or 4
+	end
+
+	local grid = {}
+
+	-- Fill background
+	for y = 1, SCENE_HEIGHT do
+		grid[y] = {}
+		for x = 1, SCENE_WIDTH do
+			if y <= 2 then
+				grid[y][x] = "0" -- ceiling
+			elseif y <= 12 then
+				grid[y][x] = "1" -- wall
+			elseif y == 13 then
+				grid[y][x] = "9" -- baseboard
+			else
+				-- Floor checkerboard
+				grid[y][x] = ((x + y) % 2 == 0) and "7" or "8"
+			end
+		end
+	end
+
+	-- Windows on the wall
+	paint_window(grid, 5, 4)
+	paint_window(grid, 20, 4)
+
+	-- Workstation desks (each 8 wide, spaced across the floor)
+	local desk_xs = { 1, 11, 21, 31 }
+	for i = 1, math.min(workstations, 4) do
+		paint_desk(grid, desk_xs[i], 14)
+		paint_chair(grid, desk_xs[i], 22)
+	end
+
+	-- Plant in the right corner
+	paint_plant(grid, 36, 28)
+
+	return grid
+end
+
+M.WIDTH = SCENE_WIDTH
+M.HEIGHT = SCENE_HEIGHT
+
+-- Desk seats: pixel coords (1-indexed) for person sprite top-left when sitting
+M.desk_seats = {
+	{ x = 3, y = 17 },
+	{ x = 13, y = 17 },
+	{ x = 23, y = 17 },
+	{ x = 33, y = 17 },
+}
+
+-- Walkable area for walking/idle people (pixel coordinates)
+M.walkable = {
+	x_min = 2,
+	x_max = 35,
+	y_min = 26,
+	y_max = 30,
+}
 
 return M
