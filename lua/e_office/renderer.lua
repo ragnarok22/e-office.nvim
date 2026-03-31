@@ -55,8 +55,22 @@ end
 -- Split a UTF-8 string into a table of individual characters
 function M._utf8_chars(str)
 	local chars = {}
-	for _, code in utf8.codes(str) do
-		table.insert(chars, utf8.char(code))
+	local i = 1
+	local len = #str
+	while i <= len do
+		local byte = string.byte(str, i)
+		local char_len
+		if byte < 0x80 then
+			char_len = 1
+		elseif byte < 0xE0 then
+			char_len = 2
+		elseif byte < 0xF0 then
+			char_len = 3
+		else
+			char_len = 4
+		end
+		table.insert(chars, str:sub(i, i + char_len - 1))
+		i = i + char_len
 	end
 	return chars
 end

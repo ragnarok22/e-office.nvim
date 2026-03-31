@@ -2,7 +2,6 @@ std = "luajit+busted"
 
 globals = {
   "vim",
-  "utf8",
 }
 
 read_globals = {
