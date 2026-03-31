@@ -1,0 +1,10 @@
+*.o
+*.so
+*.dll
+*.exe
+*.out
+*.swp
+*.swo
+*~
+.DS_Store
+tags
