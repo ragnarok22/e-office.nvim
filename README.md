@@ -2,23 +2,7 @@
 
 A virtual pixel office that lives in a floating window in your Neovim editor. Watch tiny coworkers sit at their desks typing code, get up, walk around, and return to work.
 
-```
-┌──────────────────────────────────────┐
-│ ♣       E - O F F I C E          ♣  │
-│──────────────────────────────────────│
-│  ┌───┐  ┌───┐  ┌───┐  ┌───┐        │
-│  │▓▓▓│  │▓▓▓│  │▓▓▓│  │▓▓▓│        │
-│  └─┬─┘  └─┬─┘  └─┬─┘  └─┬─┘        │
-│ ████████ ████████ ████████ ████████  │
-│   ╚╝  o   ╚╝  o   ╚╝  o   ╚╝       │
-│       /|\     /|\     /|\            │
-│  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  │
-│                                      │
-│            o                         │
-│  ♨        /|\                  ♣     │
-│           / \                        │
-└──────────────────────────────────────┘
-```
+Rendered using half-block pixel art (`▀`) with 24-bit truecolor — each character cell becomes 2 vertical pixels, giving a 40×36 pixel scene with colored brick walls, windows, desks with glowing monitors, and animated people in different shirt colors.
 
 ## Installation
 
@@ -65,7 +49,7 @@ require("e_office").stop()
 require("e_office").setup({
   window = {
     width = 40,          -- window width in columns
-    height = 15,         -- window height in rows
+    height = 18,         -- window height in rows (×2 = pixel rows)
     border = "rounded",  -- border style
     row_offset = 1,      -- offset from top edge
     col_offset = 1,      -- offset from right edge
@@ -82,24 +66,11 @@ require("e_office").setup({
 })
 ```
 
-## Highlight Groups
+## Color Palette
 
-All highlights use `default = true` so your colorscheme takes priority.
+Colors are defined in `lua/e_office/palette.lua`. The scene uses a fixed palette for walls, floor, furniture, and decorations. Each person gets a unique color variant (shirt, hair, skin) from 4 predefined variants.
 
-| Group | Default | Used for |
-|---|---|---|
-| `EOfficeWall` | `#8B8682` | Walls and borders |
-| `EOfficeFloor` | `#D2B48C` | Floor |
-| `EOfficeCarpet` | `#8B4513` | Carpet |
-| `EOfficeDesk` | `#A0522D` | Desks |
-| `EOfficeScreen` | `#00FF00` bold | Monitor screens |
-| `EOfficeMonitor` | `#333333` | Monitor frames |
-| `EOfficeChair` | `#4A4A4A` | Chairs |
-| `EOfficePerson` | `#FFD700` | Person body |
-| `EOfficePersonHead` | `#FFDAB9` | Person head |
-| `EOfficePlant` | `#228B22` | Plants |
-| `EOfficeTitle` | `#4169E1` bold | Title text |
-| `EOfficeDecor` | `#CD853F` | Decorations |
+Highlight groups are created dynamically per unique (foreground, background) color pair for half-block rendering. Requires a terminal with 24-bit truecolor support.
 
 ## Development
 
