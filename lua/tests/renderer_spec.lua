@@ -2,7 +2,6 @@ local config = require("e_office.config")
 local renderer = require("e_office.renderer")
 local people = require("e_office.people")
 local scene = require("e_office.scene")
-local palette = require("e_office.palette")
 
 describe("renderer", function()
 	before_each(function()
